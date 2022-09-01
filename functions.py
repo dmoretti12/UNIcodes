@@ -15,32 +15,52 @@ import pandas as pd
 from scipy.signal import lfilter, convolve
 from scipy.stats import norm
 
+#%% PLOT
+
+def plot(t, a, qf, i):
+    plt.figure()
+    plt.plot(t[i], a[i])
+    plt.plot(t[i], qf[i])
+    plt.show()
+    
+def zm():
+    plt.close('all')
+
+    
 # %% READ BINARY FILE
 
 
-def read_binary(filez, header, adc_res):
+def read_binary(filez, header, adc_res, ns):
 
     file = np.fromfile(filez, dtype=np.int16)
-    # file32 = np.fromfile(filez, dtype=np.int32)
-
-# 2500 points x wvf + 12 header = 2512
-# len(file)/2512=61674624/2512= 24552 wvf
-
-    pointsxwvf = int(file[0]/2)  # 2 bin per dato
-    # pointsxwvf32 = int(pointsxwvf/2)
+    file32 = np.fromfile(filez, dtype=np.int32)  # header=6 invece di 12
+    found = False
+    pointsxwvf = int(file32[0]/2)  # 2 bin per dato
+    for i in range(1, pointsxwvf):
+        if file[i]==file[0]:
+            pointsxwvf = int(i)
+            # print('trovato', i)      #debug
+            found = True
+            break
     wvf = int(len(file)/pointsxwvf)
-    points = pointsxwvf-header   # tolgo l'header x ogni wvf
+    points = int(pointsxwvf-header)
+    # print(wvf, points)               #debug
+    if found==False:
+    # pointsxwvf32 = int(pointsxwvf/2) 
+        wvf = int(len(file)/pointsxwvf)
+        points = pointsxwvf-header   # tolgo l'header x ogni wvf
 
     a = np.empty((wvf, points))
+    adc = np.empty((wvf, points))
     t = np.empty((wvf, points))
     time = np.empty(wvf)
 
     for i in range(0, wvf):
 
-        a[i] = file[(i*pointsxwvf)+header:pointsxwvf*(i+1)] * adc_res
-        t[i] = np.arange(0, 4e-03*points, 4e-03)  # 250 MHz = 4e-03 us
-        # time[i] = file32[pointsxwvf32*i+5]
-
+        adc[i] = file[(i*pointsxwvf)+header:pointsxwvf*(i+1)]
+        t[i] = np.arange(0, ns*points, ns)  # 250 MHz = 4e-03 us
+        # time[i] = file[pointsxwvf32*i+5]
+    a = adc * adc_res  #valori in volt o mV
     # freq 62.5 Mhz
     out = int(len(a[0])/4)
 
@@ -52,7 +72,7 @@ def read_binary(filez, header, adc_res):
         t62[:, i] = t[:, 4*i]
         a62[:, i] = a[:, 4*i]
 
-    return a, t, a62, t62#, time
+    return a, t, a62, t62, adc #, time
 
 # numpy.fromfile(file #string, dtype=float, count=- 1 #quali dati prendere, sep='', offset=0 #skippa primi dati, *, like=None)
 
@@ -104,10 +124,10 @@ def read_many_txt(string, iniz):
 # %% READ ONE LONG TXT
 
 
-def read_long_txt(file, righe_iniz, puntixwvf):
+def read_long_txt(file, righe_iniz, puntixwvf, ns):
     
 
-    a = np.genfromtxt(file, skip_header=righe_iniz)
+    a = np.genfromtxt(file, skip_header=righe_iniz)   #prende tanto tempo
     points = puntixwvf
     wvf = int(len(a)/points)  # =10000
     aa = np.empty((wvf, points))
@@ -116,20 +136,20 @@ def read_long_txt(file, righe_iniz, puntixwvf):
     for i in range(0, wvf):
 
         aa[i] = a[points*i:points*(i+1)]
-        tt[i] = np.arange(0, 4e-03*points, 4e-03)  # 250 MHz = 4e-03 us
+        tt[i] = np.arange(0, ns*points, ns)  # 250 MHz = 4e-03 us
 
     # freq 62.5 Mhz
-    out = int(len(aa[0])/4)
+    # out = int(len(aa[0])/4)
 
-    tt62 = np.empty((len(aa), out))
-    aa62 = np.empty((len(aa), out))
+    # tt62 = np.empty((len(aa), out))
+    # aa62 = np.empty((len(aa), out))
 
-    for i in range(0, out):
+    # for i in range(0, out):
 
-        tt62[:, i] = tt[:, 4*i]
-        aa62[:, i] = aa[:, 4*i]
+    #     tt62[:, i] = tt[:, 4*i]
+    #     aa62[:, i] = aa[:, 4*i]
 
-    return aa, tt, aa62, tt62
+    return aa, tt#, aa62, tt62
 
 #%% long txt w/ time
 
@@ -170,7 +190,7 @@ def mov_av(df, a, l):
 
     b = (np.ones(L))/L  # numerator co-effs of filter transfer function
     c = np.ones(1)  # denominator co-effs of filter transfer function
-    y = np.empty((len(df), len(df[0])))
+    y = np.zeros((len(df), len(df[0])))
     a = a + 2  # shift
 
     for i in range(0, len(df)):
@@ -179,29 +199,37 @@ def mov_av(df, a, l):
 
         z = lfilter(b, c, a[i])  # filter output using lfilter function
 
-        y[i] = z
+        y[i] = z - 2
+    
+        y[i,0:l-1] = a[i,0:l-1] - 2
 
-    return y - 2  # back from shift
+    return y  # back from shift
 
 
 # %% DENOISING
 
 def denoising(df, a, f):
 
-    signal_filtered = np.empty((len(df), len(a[0])))
+    signal_filtered = np.zeros((len(df), len(a[0])))
 
     for i in range(0, len(df)):
 
         n = len(a[i])
         fhat = np.fft.fft(a[i], n)  # computes the fft
+
         psd = fhat * np.conj(fhat)/n
         # freq = (1/(delta*n)) * np.arange(n) #frequency array
+
         idxs_half = np.arange(1, np.floor(
             n/2), dtype=np.int32)  # first half index
         psd_real = np.abs(psd[idxs_half])  # amplitude for first half
 
         # Filter out noise
         sort_psd = np.sort(psd_real)[::-1]
+        if i==0:
+            plt.figure()
+            plt.plot(sort_psd)
+            plt.show()
         # print(len(sort_psd))
         threshold = sort_psd[f]
         psd_idxs = psd > threshold  # array of 0 and 1
@@ -245,44 +273,95 @@ def norm_fit(df, a, t, inizio_sig):
 
     return mu, std#, p
 
+#%% BASELINE
+
+def baseline(a, threshold, bins): #p0
+    lenght_wvf = len(a[0])
+    a0 = np.zeros((len(a), lenght_wvf))
+    mu = np.zeros(len(a))
+    # chi2t = np.zeros(len(a))
+    
+    # plt.figure()                           #PLOT
+    for i in range (0, len(a)):
+        j=0
+        v = np.zeros(lenght_wvf)
+        
+        # plt.hist(a[i], 100)                 #PLOT
+        n, b = np.histogram(a[i], bins)
+        b1 = center_bins(b)
+        # p, _ = curve_fit(gauss, b1, n)#p0
+        # yc = gauss(b1, *p)
+        # maxx = p[1]                  #media fit
+        maxx = b1[np.argmax(n)]       # most frequent value
+        # plt.plot(b1, yc, c='r', linewidth=2, linestyle='-')  #PLOT
+
+        # chi2=0
+        # for k in range(0, len(b1)):
+        #     if n[k] != 0:
+        #         # FOR CHI2 DENSITY=FALSE IN THIS HIST & IN ISTO_CHARGE HIST
+        #         chi2 += (yc[k]-n[k])**2/(n[k])
+        #     else:
+        #         chi2 += (yc[k]-n[k])**2
+        # chi2t[i] = chi2/len(b1)
+        
+        tre = maxx + threshold
+        tre_ = maxx - threshold
+        cont=0
+        val = a[i]
+        while j<lenght_wvf:
+            if (val[j]<tre and val[j]>tre_):
+                v[j] = val[j]
+                cont += 1
+                j = j + 1
+            else: j=j+250                    #index at 250Mhz to jump 1us
+
+        # x = np.linspace(3020, 3185, 84)              #PLOT
+        # x1 = np.linspace(3020, 3230, 1000)           #PLOT
+        mu[i] = sum(v)/cont                         #faccio la semplice media perchè è una gaussiana, non serve fare il fit
+        # n, b = np.histogram(v, bins)
+        # plt.hist(v, bins=x, alpha=0.5)                #PLOT
+        # b1 = center_bins(b)
+        # p, _ = curve_fit(gauss, b1, n, p0)
+        # plt.plot(x1, gauss(x1, *p), c='r', label='Best fit', linewidth=2, linestyle='-')  #PLOT
+        # mu[i] = p[1] 
+        a0[i] = a[i] - mu[i]  #p[1]
+    # plt.show()                             #PLOT
+    return a0, mu#, chi2t
 
 # %% MY SIGNAL FINDER (dev_std*sigma to discriminate + charge integral)
 
-def signal(df, a, a_filt, t, threshold, prima, dopo):
+def signal(df, a, a_filt, t, threshold, prima, dopo, time_after_pulse, lim_amp, debug, w, n, t_min, t_max):
 
 
-    # carica = []
-    ss = []
-    # peak = []
-    # peakpos = []
-    carica = np.zeros((len(df), 50))
-    sop = np.zeros((len(df), 50))
-    sot = np.zeros((len(df), 50))
-    peak = np.zeros((len(df), 50))
-    peakpos = np.zeros((len(df), 50))
+    carica = np.zeros((len(df), n))
+    # sop = np.zeros((len(df), n))
+    # sot = np.zeros((len(df), n))
+    # peak = np.zeros((len(df), n))
+    # peakpos = np.zeros((len(df), n))
     e = np.zeros(len(df))
+    
+    if debug==True: leng=w
+    else: leng=len(df)
+    
+    for i in range(0, leng):
 
-    for i in range(0, len(df)):#10, 24):#len(df)):
 
-
-        tre = threshold[i]  # mean[i] + sigma*abs(dev_std[i])   #THRESHOLD
+        tre = threshold  # mean[i] + sigma*abs(dev_std[i])   #THRESHOLD
         j = 0
-        # c = []   # array integrale segnale (charge) della i-esima waveform
-        s = []   # indici segnali
-        # p = []   # peaks
-        # pt = []  # peaks position
-        
         ev = 0
         trigger = False
-        # plt.figure()                        #PLOT
-        # plt.plot(t[i], a[i], '-')           #PLOT
-        # plt.plot(t[i], a_filt[i], '-r')     #PLOT
-        # re=False                            #debug
-        j=0
+        
+        if debug==True:
+            plt.figure()                        #PLOT
+            ax=plt.gca()
+            ax.tick_params(bottom=True, top=True, left=True, right=True)
+            ax.tick_params(labelbottom=True, labeltop=False, labelleft=True, labelright=False)
+            plt.plot(t[i], a[i], '-')           #PLOT
+            plt.plot(t[i], a_filt[i], '-r')     #PLOT
+
+        j=25     #SKIPPING THE FIRST 100 NS UNTIL I FIXED FILTER
         while j < len(a[i]):
-            # if (re==True):   #debug
-            #     print(j)
-            # re=False
+            
             if j >= len(a[i])-2:
                 break
 
@@ -290,71 +369,70 @@ def signal(df, a, a_filt, t, threshold, prima, dopo):
 
                 jj = j
                 trigger = True
-                j = j + 25
+                j = j + 15
 
             elif (a_filt[i, j] < tre and trigger == True):
 
                 k = j
                 trigger = False
-                # re=True     #debug
                 
+                
+                picco = a[i, jj:k]
+                # peak[i, ev] = np.max(picco)
+                if np.max(picco)>lim_amp: continue    #for data random wall leakage
+
+                pk = np.argmax(picco)+jj
+                if t_min!=0 and t_max!=0:
+                    if pk>t_min and pk<t_max: continue
+
+                # peakpos[i, ev] = pk
                 # faccio l'integrale prendendo qualche pto prima e qualcuno dopo
-                integral = np.trapz(a_filt[i, jj-prima:k+dopo],
-                                    t[i, jj-prima:k+dopo])
-                # c.append(integral)
+                integral = np.trapz(a[i, pk-prima:pk+dopo],
+                                    t[i, pk-prima:pk+dopo])
+
                 carica[i, ev] = integral
-                s.append([jj, k])  # indici sopra e sotto il threshold
-                sop[i, ev] = jj
-                sot[i, ev] = k
+
+                # indici sopra e sotto il threshold
+                # sop[i, ev] = jj
+                # sot[i, ev] = k
                 
-                picco = a_filt[i, jj:k]
-                # p.append(np.max(picco))
-                peak[i, ev] = np.max(picco)
-                # pt.append(np.argmax(picco))
-                peakpos[i, ev] = np.argmax(picco)
-                
-                # plt.plot(t[i, np.argmax(picco)+jj], np.max(picco), 'x')              #PLOT
-                # plt.plot(t[i,jj-prima:k+dopo], a_filt[i, jj-prima:k+dopo], '-')      #PLOT
+                if debug==True:
+                    plt.plot(t[i, pk], np.max(picco), 'x', markersize=20)              #PLOT
+                    plt.plot(t[i,pk-prima:pk+dopo], a_filt[i, pk-prima:pk+dopo], '-')      #PLOT
                 # print(k)                                                             #debug
                 
                 # in modo che non rientri nel for per i punti appartenenti al picco + evita afterpulse
-                j = k + 90 #int(0.05*len(t[i]))
-                ev = ev + 1
-                e[i] = ev
-            else: j = j + 1
+                j = k + time_after_pulse   #200 ns at 250Mhz
+                ev += 1
+                e[i] = int(ev)
+            else: j += 1
 
+        if debug==True:
+            plt.ylabel('Amplitude [ADC]')
+            plt.xlabel('Time [ns]')
+            plt.show()                 #PLOT
 
-        # plt.show()                 #PLOT
-        
-        # carica.append(c)
-        # ss.append(s)
-        # peak.append(p)
-        # peakpos.append(pt)
-
-    return carica, peak, peakpos, sop, sot, e
+    return carica, e#, peak, peakpos, sop, sot
 
 # %% istogramma carica fotopicchi
 
 
-def isto_carica(df, aa, tt, t_min, t_max, _bin):
+def isto_carica(df, aa, tt, t_min, t_max, _bin, x, y):
 
     charge = np.empty(len(df))
 
     for i in range(0, len(df)):
 
-        # for j in range(t_min, t_max):
-
-        # t_int = tt[i, tt[i] > tmin]
-        # a_int = aa[i, tt[i] > tmin]
-        # yy = a_int[t_int < tmax]
-        # zz = t_int[t_int < tmax]
-
         integral = np.trapz(aa[i, t_min:t_max], tt[i, t_min:t_max])
         charge[i] = integral
+        if integral==0.:
+            print(i)
 
     # print(t_min,t_max)
-
-    n, b = np.histogram(charge, _bin, density=False)
+    if x==0 and y==0: 
+        if _bin==0: n, b = np.histogram(charge)
+        else: n, b = np.histogram(charge, _bin, density=False)
+    else: n, b = np.histogram(charge, _bin, range=[x, y], density=False)
 
     return n, b, charge
 
@@ -562,6 +640,18 @@ def ampl_pe(df, a, t, t_min, t_max):
 
     return carica, peak
 
+#%% CENTER BIN FOR FIT
+
+def center_bins(b):
+    
+    bbin = np.zeros(len(b))
+    l = (b[2]-b[1])/2
+    bbin = l + b  # np.resize(b, len(b))
+    b1 = np.delete(bbin, len(b)-1)
+    
+    return b1
+
+
 # %% FIT PHOTOPEAKS SPECTRUM
 
 
@@ -573,71 +663,115 @@ def multi_gauss(x, *par):
 
     q = gauss(x, par[0], par[1], par[2]) + gauss(x, par[3], par[4],
                                                  par[5]) + gauss(x, par[6], par[7], (math.sqrt(2)*par[5]))
-
     dif = par[7] - par[4]
     media = par[7] + dif
-
     for i in range(0, int((len(par)-8))):
         q = q + gauss(x, par[i+8], media, math.sqrt(3+i)*par[5])
         media = media + dif
-
     return q
 
+def multi_gauss_n(x, *par):
+   q = gauss(x, par[0], par[1], par[2]) + gauss(x, par[3], par[4],
+                                                par[5]) + gauss(x, par[6], par[7], par[8])
+   dif = par[7] - par[4]
+   media = par[7] + dif
+   for i in range(0, int((len(par)-9)/2)):
+       q = q + gauss(x, par[(2*i+9)], media, par[(2*i+10)])
+       media = media + dif
+   return q
 
-def multi_fit(numg, p0, n, b, charge, x):
+
+def multi_fit(numg, p0, n, b, charge, x, fitdue, optimiz):
 
     # x of histogram as center of every bin for the fit
-    bbin = np.zeros(len(b))
-    l = (b[2]-b[1])/2
-    bbin = l + b  # np.resize(b, len(b))
-    b1 = np.delete(bbin, len(b)-1)
+    b1 = center_bins(b)
 
     popt, pcov = curve_fit(multi_gauss, b1, n, p0,
-                           maxfev=10000, bounds=(-0.055, 600))
+                           maxfev=100000, bounds=(-10000, 20000))
+    yc = multi_gauss(b1, *popt)
+    ym = multi_gauss(x, *popt)
+    if fitdue==True:
+        p=[]
+        j=1
+        for i in range(0, len(popt)+numg+1):
+            if i<8:
+                p.append(popt[i])
+            elif i%2==0:
+                p.append(math.sqrt(3+(i-8))*popt[5])
+            else:
+                p.append(popt[i-j])
+                j+=1
+            
+        popt, pcov = curve_fit(multi_gauss_n, b1, n, p,
+                                maxfev=1000000, bounds=(-100, 50000))     # SECOND FIT
+        yc = multi_gauss_n(b1, *popt)
+        ym = multi_gauss_n(x, *popt)
 
-    SNR = popt[4]/math.sqrt(popt[2]**2 + popt[5]**2)
+    SNR = popt[4]/math.sqrt(popt[2]**2)# + popt[5]**2)
 
     #pop, pc = leastsq(tre_gauss, b1, n, p0, maxfev=10000)
     # popt=p0    #plot delle gaussiane singole e totale con i parametri iniziali che do io
-    yc = multi_gauss(b1, *popt)
-    ym = multi_gauss(x, *popt)
+
     chi2 = 0
     for i in range(0, len(b1)):
-
-        if n[i] != 0:
-            # FOR CHI2 DENSITY=FALSE IN THIS HIST & IN ISTO_CHARGE HIST
-            chi2 += (yc[i]-n[i])**2/(n[i])
-        else:
-            chi2 += (yc[i]-n[i])**2
+        if n[i]!=0: chi2 += (yc[i]-n[i])**2/(n[i]) # FOR CHI2 DENSITY=FALSE IN THIS HIST & IN ISTO_CHARGE HIST
+        else: chi2 += (yc[i]-n[i])**2
     chi2 = chi2/len(b1)
+    
+    if optimiz==False:
+        plt.figure(figsize=[8.5, 6])                                                         #PLOT
+        plt.hist(charge, b, density=False)                                     #PLOT
+        plt.plot(x, ym, c='r', label='Best fit', linewidth=2, linestyle='-')   #PLOT
+        
+        dif = popt[7]-popt[4]
+        media = popt[7]+dif
+        c1 = popt[5]
+        
+        if (fitdue==True):
+            
+            for i in range(0, 3+numg):
+                
+                if i<3: 
+                    fittxt = 'A%i= '%i+str(round(popt[3*(i)], 2))+'; mu%i= '%i + \
+                    str(round(popt[3*i+1], 2))+'; s%i= '%i+str(round(popt[3*i+2], 2))
+                    gi=gauss(x, popt[3*(i)], popt[3*i+1], popt[3*i+2])
+                    
+                else: 
+                    fittxt = 'A%i= '%i+str(round(popt[(2*i+3)], 2))
+                    gi = gauss(x, popt[(2*i+3)], media, popt[(2*i+4)])
+                    media = media + dif
 
-    # plt.figure()                                                           #PLOT
-    # plt.hist(charge, b, density=False)                                     #PLOT
-    # plt.plot(x, ym, c='r', label='Best fit', linewidth=2, linestyle='-')   #PLOT
+                plt.plot(x, gi, label=fittxt, linestyle='-') 
+        else:       
+            g0 = gauss(x, popt[0], popt[1], popt[2])
+            g1 = gauss(x, popt[3], popt[4], popt[5])
+            g2 = gauss(x, popt[6], popt[7], (math.sqrt(2)*popt[5]))
+            
+        
+            fittxt0 = 'A0= '+str(round(popt[0], 5))+'; mu0= ' + \
+                str(round(popt[1], 5))+'; s0= '+str(round(popt[2], 5))
+            fittxt1 = 'A1= '+str(round(popt[3], 5))+'; mu1= ' + \
+                str(round(popt[4], 5))+'; s1= '+str(round(popt[5], 5))
+            fittxt2 = 'A2= '+str(round(popt[6], 5))+'; mu2= '+str(round(popt[7], 5))
+    
+            plt.plot(x, g0, label=fittxt0, linestyle='-')                          #PLOT
+            plt.plot(x, g1,  label=fittxt1, linestyle='-')                         #PLOT
+            plt.plot(x, g2,  label=fittxt2, linestyle='-')                         #PLOT
+        
+            for i in range(0, numg):
+                gi = gauss(x, popt[i+8], media, (math.sqrt(3+i)*c1))
+                plt.plot(x, gi, label='A%i= ' %                                    #PLOT
+                          (i+3)+str(round(popt[i+8], 5)), linestyle='-')           #PLOT
+                media = media + dif
+        
+        ax=plt.gca()
+        ax.tick_params(bottom=True, top=True, left=True, right=True)
+        ax.tick_params(labelbottom=True, labeltop=False, labelleft=True, labelright=False)
+        plt.ylabel('Counts')
+        plt.xlabel('Charge [mV.ns]')
+        plt.legend(fontsize = 'xx-small', loc='upper right')                      #PLOT
+        # plt.savefig('coldbox_aug_spe_spectrum-carica = 5177.131 ,  SNR =  4.57.png', dpi=600)
 
-    g0 = gauss(x, popt[0], popt[1], popt[2])
-    g1 = gauss(x, popt[3], popt[4], popt[5])
-    g2 = gauss(x, popt[6], popt[7], (math.sqrt(2)*popt[5]))
-
-    dif = popt[7]-popt[4]
-    media = popt[7]+dif
-    c1 = popt[5]
-    fittxt0 = 'A0= '+str(round(popt[0], 5))+'; mu0= ' + \
-        str(round(popt[1], 5))+'; s0= '+str(round(popt[2], 5))
-    fittxt1 = 'A1= '+str(round(popt[3], 5))+'; mu1= ' + \
-        str(round(popt[4], 5))+'; s1= '+str(round(popt[5], 5))
-    fittxt2 = 'A2= '+str(round(popt[6], 5))+'; mu2= '+str(round(popt[7], 5))
-    # plt.plot(x, g0, label=fittxt0, linestyle='-')                          #PLOT
-    # plt.plot(x, g1,  label=fittxt1, linestyle='-')                         #PLOT
-    # plt.plot(x, g2,  label=fittxt2, linestyle='-')                         #PLOT
-
-    for i in range(0, numg):
-        gi = gauss(x, popt[i+8], media, (math.sqrt(3+i)*c1))
-        # plt.plot(x, gi, label='A%i= ' %                                    #PLOT
-        #           (i+3)+str(round(popt[i+8], 5)), linestyle='-')            #PLOT
-        media = media + dif
-
-    # plt.legend()                                                           #PLOT
-    # plt.show()                                                             #PLOT 
+        plt.show()                                                             #PLOT 
 
     return popt, pcov, SNR, chi2
