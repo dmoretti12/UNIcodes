@@ -6,50 +6,47 @@ Created on Thu Sep  1 02:32:49 2022
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
-import math
-from scipy.optimize import curve_fit
-
 import os
 import glob
 import pandas as pd
-from scipy.signal import lfilter, convolve
-from scipy.stats import norm
 
 
-
-class read_data:
+class READ_DATA:
     
-    def __init__(self, file_type, file, header, adc_res, ns, bit, iniz, puntixwvf):
+    def __init__(self, classe_dati):
         
-        # self.ampl
-        # self.time
-        self.type = file_type
-        self.file = file
-        self.header = header
-        self.adc_res = adc_res
-        self.ns = ns
-        self.bit = bit
-        self.iniz = iniz
-        self.puntixwvf = puntixwvf
+        self.hd = classe_dati
+        
+        self.type = 'binary'
+        self.file = 'cc.dat'
+        
+        self.header = 12
+        self.adc_res = 1
+        self.bit = 16
+        
+        self.iniz = 'C1X*.txt'
+        
+        self.puntixwvf = 938
      
-        
+ #################################################       
         
     def read_binary(self):
         
+        ns = self.hd.ns
         if self.bit==16:
             filez = np.fromfile(self.file, dtype=np.int16)
         filez32 = np.fromfile(self.file, dtype=np.int32)  # header=6 invece di 12
-        if self.bit==32:
-            filez = filez32
+        # if self.bit==32:
+        #     filez = filez32
         found = False
         pointsxwvf = int(filez32[0]/2)  # 2 bin per dato
-        for i in range(1, pointsxwvf):
-            if filez[i]==filez[0]:
-                pointsxwvf = int(i)
-                # print('trovato', i)      #debug
-                found = True
-                break
+        print(pointsxwvf)                   #debug
+        # for i in range(1, pointsxwvf):
+        #     if filez[i]==filez[0]:
+        #         pointsxwvf = int(i)
+        #         # print('trovato', i)      #debug
+        #         found = True
+        #         break
         wvf = int(len(filez)/pointsxwvf)
         points = int(pointsxwvf-self.header)
         # print(wvf, points)               #debug
@@ -58,23 +55,21 @@ class read_data:
             wvf = int(len(filez)/pointsxwvf)
             points = pointsxwvf-self.header   # tolgo l'header x ogni wvf
 
-        global a, t
-        a = np.empty((wvf, points))
-        adc = np.empty((wvf, points))
-        t = np.empty((wvf, points))
+        a = np.zeros((wvf, points))
+        adc = np.zeros((wvf, points))
+        t = np.zeros((wvf, points))
         # time = np.empty(wvf)
 
         for i in range(0, wvf):
 
             adc[i] = filez[(i*pointsxwvf)+self.header:pointsxwvf*(i+1)]
-            t[i] = np.arange(0, self.ns*points, self.ns)  # 250 MHz = 4e-03 us
+            t[i] = np.arange(0, ns*points, ns)  # 250 MHz = 4e-03 us
             # time[i] = file[pointsxwvf32*i+5]
         a = adc * self.adc_res  #valori in volt o mV
         
         # freq 62.5 Mhz se a è 250 Mhz
         out = int(len(a[0])/4)
         
-        global a62, t62
         t62 = np.empty((len(a), out))
         a62 = np.empty((len(a), out))
 
@@ -85,20 +80,41 @@ class read_data:
 
         return a, t, a62, t62#, adc , time
         
-############
+#########################################################################
         
+    def concatenate(self, n_file, files):
+        
+        for i in range(n_file):
+            
+            self.file = files[i]
+            ai, _, _, _  = self.__read__()
+            
+            if i==0:
+                a = np.zeros((len(ai)*n_file, len(ai[0])))
+                a[0:len(ai)] = ai
+            
+            else: a[len(ai)*i:(i+1)*len(ai)] = ai
+                # a = np.concatenate((a, ai), axis=0)#, out=a)
+        
+        t = np.zeros((len(a),len(a[0])))
+        
+        for i in range(len(t)):
+            t[i] = np.arange(0, self.hd.ns*len(ai[0]), self.hd.ns)
+            
+        return a, t
+
+#########################################################################
+
     def read_many_txt(self):
 
         os.chdir(self.file)
 
         filenames = [i for i in glob.glob(self.iniz)]
         
-        global df
         #df = pd.read_csv('C1XArapuca_CRT_250MHz_00000.txt', sep=" ", header=5, index_col = None, encoding = 'unicode_escape')
         df = [pd.read_csv(f, sep=",", header=self.header, engine='python', index_col=None, encoding='unicode_escape')
               for f in filenames]
         
-        global a, t
         t = np.empty((len(df), len(df[0]))) 
         a = np.empty((len(df), len(df[0])))
 
@@ -121,7 +137,6 @@ class read_data:
 
         out = int(len(df[0])/4)
         
-        global a62, t62
         t62 = np.empty((len(df), out))  # freq 62.5 Mhz
         a62 = np.empty((len(df), out))
 
@@ -132,23 +147,23 @@ class read_data:
 
         return df, a, t, a62, t62
         
-############      
+############################################################################  
         
 
     def read_long_txt(self):
         
-
+        ns = self.hd.ns
         data = np.genfromtxt(self.file, skip_header=self.header)   #PRENDE TANTO TEMPO
         points = self.puntixwvf
         wvf = int(len(data)/points)  
-        global a, t
+
         a = np.empty((wvf, points))
         t = np.empty((wvf, points))
 
         for i in range(0, wvf):
 
             a[i] = data[points*i:points*(i+1)]
-            t[i] = np.arange(0, self.ns*points, self.ns)
+            t[i] = np.arange(0, ns*points, ns)
 
         # freq 62.5 Mhz
         out = int(len(a[0])/4)
@@ -164,7 +179,7 @@ class read_data:
         return a, t, a62, t62
         
         
-#################
+#######################################################################
 
 
     def read_long_txt_time(self):
@@ -174,14 +189,14 @@ class read_data:
         aa = f[:,1]
         points = self.puntixwvf
         wvf = int(len(tt)/points)
-        global a, t
+
         a = np.empty((wvf, points))
         t = np.empty((wvf, points))
 
         for i in range(0, wvf):
 
             a[i] = aa[points*i:points*(i+1)]
-            t[i] = tt[points*i:points*(i+1)]  # 250 MHz = 4e-03 us
+            t[i] = tt[points*i:points*(i+1)]
 
         # freq 62.5 Mhz
         out = int(len(a[0])/4)
@@ -195,16 +210,18 @@ class read_data:
             a62[:, i] = a[:, 4*i]
 
         return a, t, a62, t62
-        
+
+############################################################################à
+
     def __read__(self):
         if self.type=='binary':
-            f = read_data.read_binary(self)
+            f = READ_DATA.read_binary(self)
         if self.type=='many_txt':
-            f = read_data.read_many_txt(self)
+            f = READ_DATA.read_many_txt(self)
         if self.type=='long_txt':
-            f = read_data.read_long_txt(self)
+            f = READ_DATA.read_long_txt(self)
         if self.type=='long_txt_time':
-            f = read_data.read_long_txt_time(self)
+            f = READ_DATA.read_long_txt_time(self)
         return f
 
      

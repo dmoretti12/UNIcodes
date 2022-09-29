@@ -18,13 +18,35 @@ from scipy.stats import norm
 #%% PLOT
 
 def plot(t, a, qf, i):
-    plt.figure()
-    plt.plot(t[i], a[i])
-    plt.plot(t[i], qf[i])
+
+    plt.figure(figsize=[8.5, 6])
+    ax=plt.gca()
+    ax.tick_params(bottom=True, top=True, left=True, right=True)
+    ax.tick_params(labelbottom=True, labeltop=False, labelleft=True, labelright=False)
+    plt.plot(t[i], a[i], label='dati grezzi', )
+    plt.plot(t[i], qf[i], label='dati filtrati')
+    plt.legend()
+    plt.xlabel('Time [ns]')
+    plt.ylabel('Amplitude [ADC]')
     plt.show()
     
 def zm():
     plt.close('all')
+    
+def histo_2d(t, a, x1, x2, step1, y1, y2, step2):
+    
+    xbi = np.arange(x1, x2, step1)
+    ybi = np.arange(y1, y2, step2)
+    
+    plt.figure()
+    h, xb, yb = np.histogram2d(t.flatten(), a.flatten(), bins=(xbi, ybi), normed=None, weights=None, density=None)
+    h = np.log(h.T)
+    #X, Y = np.meshgrid(xb, yb)
+    plt.pcolormesh(xb, yb, h, cmap='jet')
+    plt.xlabel('Time [ns]')
+    plt.ylabel('Amplitude [ADC]')
+    plt.colorbar()
+    plt.show()
 
     
 # %% READ BINARY FILE
@@ -201,9 +223,9 @@ def mov_av(df, a, l):
 
         y[i] = z - 2
     
-        y[i,0:l-1] = a[i,0:l-1] - 2
+        y[i,0:l-1] = a[i,0:l-1] - 2   # back from shift
 
-    return y  # back from shift
+    return y  
 
 
 # %% DENOISING
@@ -407,10 +429,10 @@ def signal(df, a, a_filt, t, threshold, prima, dopo, time_after_pulse, lim_amp, 
                 e[i] = int(ev)
             else: j += 1
 
-        if debug==True:
-            plt.ylabel('Amplitude [ADC]')
-            plt.xlabel('Time [ns]')
-            plt.show()                 #PLOT
+    if debug==True:
+        plt.ylabel('Amplitude [ADC]')
+        plt.xlabel('Time [ns]')
+        plt.show()                 #PLOT
 
     return carica, e#, peak, peakpos, sop, sot
 
