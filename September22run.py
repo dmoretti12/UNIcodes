@@ -13,7 +13,7 @@ j=0
 hd[j].ns = 4
 h1 = READ_DATA(hd[j])
 
-os.chdir("H:\Il mio Drive\WORK\\random trigger x e mini")
+os.chdir("")
 # file1="0_wave6_37V00_20ADC_random_trigger.dat"
 # file2="1_wave6_37V00_20ADC_random_trigger.dat"
 # files = [file1, file2]
@@ -29,12 +29,12 @@ j=0
 hd[j].ns = 4
 h1 = READ_DATA(hd[j])
 
-os.chdir("H:\Il mio Drive\WORK\\run0_47V00_20ADC_random_trigger_digital_on_slow_control_working")
-file1="0_wave5_47V00_20ADC_random_trigger.dat"
-file2="1_wave5_47V00_20ADC_random_trigger.dat"
-# os.chdir("H:\Il mio Drive\WORK\\run1_47V00_20ADC_random_trigger_digital_on_slow_control_off")
-# file1="0_wave5_47V00_20ADC_random_trigger_digital_on_slow_control_off.dat"
-# file2="1_wave5_47V00_20ADC_random_trigger_digital_on_slow_control_off.dat"
+# os.chdir(r"C:\Users\Davide\Documents\DATI\run0_47V00_20ADC_random_trigger_digital_on_slow_control_working")
+# file1="0_wave5_47V00_20ADC_random_trigger.dat"
+# file2="1_wave5_47V00_20ADC_random_trigger.dat"
+os.chdir(r"C:\Users\Davide\Documents\DATI\run1_47V00_20ADC_random_trigger_digital_on_slow_control_off")
+file1="0_wave5_47V00_20ADC_random_trigger_digital_on_slow_control_off.dat"
+file2="1_wave5_47V00_20ADC_random_trigger_digital_on_slow_control_off.dat"
 
 files = [file1, file2]
 n_file = len(files)
@@ -126,14 +126,14 @@ popt, pcov, SNR, chi2 = h3.multi_fit()
 j=0
 
 h3 = ANALYZE_DATA(hd[j])
-h3.signal_threshold = 36        
-h3.prima_t = 40                
-h3.dopo_t = 130                
-h3.debug_signal = False
+h3.signal_threshold = 36    
+h3.prima_t = 30                
+h3.dopo_t = 210                
+h3.debug_signal = True
 h3.lim_amp = 300  # >10 pe is cosmic
 h3.windows = 6
 h3.time_after_pulse = 1000 
-h3.number_events_expected = 700
+h3.number_events_expected = 800
 h3.sig_plot=True
 h3.t_min_sig = 0
 h3.t_max_sig = 0
