@@ -40,7 +40,7 @@ class READ_DATA:
         #     filez = filez32
         found = False
         pointsxwvf = int(filez32[0]/2)  # 2 bin per dato
-        print(pointsxwvf)                   #debug
+        print("points:", pointsxwvf)                   #debug
         # for i in range(1, pointsxwvf):
         #     if filez[i]==filez[0]:
         #         pointsxwvf = int(i)
@@ -48,6 +48,7 @@ class READ_DATA:
         #         found = True
         #         break
         wvf = int(len(filez)/pointsxwvf)
+        print('wvfs:', wvf)
         points = int(pointsxwvf-self.header)
         # print(wvf, points)               #debug
         if found==False:
