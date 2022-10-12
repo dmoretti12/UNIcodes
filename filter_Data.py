@@ -40,6 +40,8 @@ class FILTER_DATA:
         
         self.l_mov_av = 7
         
+        self.f_denoising = 100
+        
         self.threshold_base = 30
         self.bin_base = 100
         self.debug_base = False
@@ -83,7 +85,7 @@ class FILTER_DATA:
 
 ##################################################################################
 
-    def denoising(self, a, f):
+    def denoising(self, a):
 
         n_wvf = len(a)
         wvf_lenght = len(a[0])
@@ -108,7 +110,7 @@ class FILTER_DATA:
                 plt.plot(sort_psd)
                 plt.show()
             # print(len(sort_psd))
-            threshold = sort_psd[f]
+            threshold = sort_psd[self.f_denoising]
             psd_idxs = psd > threshold  # array of 0 and 1
             # psd_clean = psd * psd_idxs #zero out all the unnecessary powers
             fhat_clean = psd_idxs * fhat  # used to retrieve the signal
