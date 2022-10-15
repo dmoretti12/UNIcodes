@@ -35,6 +35,7 @@ class READ_DATA:
         ns = self.hd.ns
         if self.bit==16:
             filez = np.fromfile(self.file, dtype=np.int16)
+            print('len file:', len(filez))
         filez32 = np.fromfile(self.file, dtype=np.int32, count=2)  # header=6 invece di 12
         # if self.bit==32:
         #     filez = filez32

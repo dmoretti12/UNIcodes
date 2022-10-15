@@ -9,5 +9,5 @@ from read_Data import READ_DATA
 from filter_Data import FILTER_DATA, DATI
 from analyze_Data import ANALYZE_DATA
 from functions import plot, zm, histo_2d
-import os
+import os, matplotlib.pyplot as plt
 

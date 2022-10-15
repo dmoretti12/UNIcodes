@@ -6,7 +6,7 @@ Created on Thu Sep  1 16:27:09 2022
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import lfilter, convolve
+from scipy.signal import lfilter, convolve, filtfilt, medfilt
 from scipy.stats import norm
 
 
@@ -39,7 +39,8 @@ class FILTER_DATA:
         self.hd = classe_dati
         
         self.l_mov_av = 7
-        
+        self.l_filtfilt = 7
+        self.kernel_size = 25     #always odd
         self.f_denoising = 100
         
         self.threshold_base = 30
@@ -55,8 +56,47 @@ class FILTER_DATA:
         self.do = 'baseline'
         self.filtro = 'mov_av'
         
-##################################################################################     
+#############################################################################
+
+    def medfilt(self, a):
         
+        k = self.kernel_size   #always odd
+        n_wvf = len(a)
+        wvf_lenght = len(a[0])
+        q = np.zeros((n_wvf, wvf_lenght))
+        
+        for i in range(0, len(a)):
+            if i==0: print('Filtering data with medfilt..')
+            q[i] = medfilt(a[i], kernel_size=k)
+            
+        return q
+        
+##################################################################################     
+
+    def filtfilt(self, a):
+    
+        L = self.l_filtfilt  # L-point filter
+        
+        n_wvf = len(a)
+        wvf_lenght = len(a[0])
+        
+        b = (np.ones(L))/L  # numerator co-effs of filter transfer function
+        c = np.ones(1)  # denominator co-effs of filter transfer function
+        z = np.zeros((n_wvf, wvf_lenght))
+        #d = a + 2  # shift
+    
+        for i in range(0, n_wvf):
+            if i==0: print("Doing moving average w\ filtfilt..")
+    
+            # z = convolve(a[i], b)  # filter output using convolution
+    
+            z[i] = filtfilt(b, c, a[i], axis=-1, padtype='odd', padlen=None, method='pad', irlen=None)
+    
+    
+        return z 
+
+##################################################################
+
     def mov_av(self, a):
 
         L = self.l_mov_av  # L-point filter
@@ -77,8 +117,8 @@ class FILTER_DATA:
             z = lfilter(b, c, d[i])  # filter output using lfilter function
 
             y[i] = z - 2
-        
-            y[i,0:L-1] = d[i,0:L-1] - 2  # back from shift
+            if wvf_lenght%L!=0:    
+                y[i,0:L-1] = d[i,0:L-1] - 2  # back from shift
 
         return y  
 
@@ -130,6 +170,16 @@ class FILTER_DATA:
         b1 = np.delete(bbin, len(b)-1)
         
         return b1    
+    
+    def recenter_bins(self, b):
+        
+        bbin = np.zeros(len(b))
+        l = (b[2]-b[1])/2
+        bbin = b + l
+        # b1 = np.delete(bbin, len(b)-1)
+        
+        return bbin    
+        
 
 ###################################################
 
