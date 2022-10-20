@@ -201,7 +201,7 @@ class FILTER_DATA:
         
         if self.debug_base==True: 
             plt.figure()                           #PLOT
-            n_wvf=2
+            n_wvf=4
             
         for i in range (0, n_wvf):
             if i==0: print("Estimating baseline ..")
@@ -234,8 +234,9 @@ class FILTER_DATA:
                 print(i)
                 cont[i]=1
             mu[i] = sum(val_acc)/cont[i]                        #faccio la semplice media perchè è una gaussiana, non serve fare il fit
-            if cont[i]<self.discard_tre: uno[i]=0
-        # plt.hist(cont, 100, range=[-5, 2500])
+            if cont[i]<self.discard_tre: 
+                uno[i]=0
+                print(i, cont[i])
 
         a0 = self.sottraggo_baseline(a0, a, mu)#valori invece di a #salvare in un formato i dati filtrati con baseline
         

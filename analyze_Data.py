@@ -336,7 +336,7 @@ class ANALYZE_DATA:
             plt.legend(fontsize = 'xx-small', loc='upper right')                      #PLOT
             # plt.savefig('coldbox_aug_spe_spectrum-carica = 5177.131 ,  SNR =  4.57.png', dpi=600)
             plt.show()                                                             #PLOT 
-            print('carica =', round(popt[7]-popt[4], 2), ',  SNR = ', round(SNR, 2), ",  chi2 =", round(chi2, 2))#, j)
+            print('charge =', round(popt[7]-popt[4], 2), ',  SNR = ', round(SNR, 2), ",  chi2 =", round(chi2, 2))#, j)
 
     
         return popt, pcov, SNR, chi2

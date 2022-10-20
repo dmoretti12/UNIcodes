@@ -87,7 +87,7 @@ file3="2_wave1_led_7V_50ns_digital_on.dat"
 files = [file1, file2, file3]
 n_file = len(files)
 
-hd[j].a_wout_baseline,  hd[j].t = g1.concatenate(n_file, files)
+hd[j].a_wout_baseline,  hd[j].t = h1.concatenate(n_file, files)
 # h1.file="0_wave1_led_7V_50ns.dat"
 # hd[j].a_wout_baseline,  hd[j].t, _, _ = h1.__read__()
 os.chdir(r"C:\Users\Davide\Documents\GitHub\UNIcodes")
@@ -155,7 +155,7 @@ hd[j].a_dfilt = h2.filtfilt(hd[j].a)
 
 #%%
 
-plot(hd[j].t, hd[j].a, hd[j].a_dfilt, 0)
+plot(hd[j].t, hd[j].a, hd[j].a_dfilt, 9291)
 #%%
 from functions import *
 n, b = np.histogram(hd[j].a, 300, range=[-100, 200]) #[hd[j].a_dfilt<20]-hd[j].a_dfilt[hd[j].a_dfilt<20]
