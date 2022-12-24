@@ -28,6 +28,8 @@ class ANALYZE_DATA:
         self.t_min_sig = 0
         self.t_max_sig = 0
         self.sig_plot = True
+        self.time_noise = 500
+        self.value_noise = -12
         
         self.selection=False
         self.isto_plot = True
@@ -69,6 +71,7 @@ class ANALYZE_DATA:
         # peak = np.zeros((n_wvf, self.number_events_expected))
         # peakpos = np.zeros((n_wvf, self.number_events_expected))
         e = np.zeros(n_wvf)
+        rej = np.zeros(0)
         
         if self.debug_signal==True: n_wvf=self.windows
         
@@ -116,12 +119,28 @@ class ANALYZE_DATA:
                     ind_picco = np.argmax(picco)+jj
                     if ind_min_sig!=0 and ind_max_sig!=0:
                         if ind_picco>ind_min_sig and ind_picco<ind_max_sig: continue
+                    
+                    ind_noise = ind_picco + int(self.time_noise/self.hd.ns)
+                    con=0
+                    if ind_noise<wvf_lenght:
+                        for l in range(ind_picco, ind_noise):
+                            if val[l]<self.value_noise:
+                                con+=1
+                        # print(i, ind_picco*self.hd.ns, ind_noise*self.hd.ns, con)
+                        # fare istogramma ev rifiutati per vedere se sto saltando ev veri
+                        if con>2: 
+                            int_rej = np.trapz(val[ind_picco-prima:ind_picco+dopo],
+                                                time[ind_picco-prima:ind_picco+dopo])
+                            rej=np.append(rej, int_rej)
+                            continue
+                    
 
                     # peakpos[i, ev] = ind_picco
                     # faccio l'integrale prendendo qualche pto prima e qualcuno dopo
                     integral = np.trapz(val[ind_picco-prima:ind_picco+dopo],
                                         time[ind_picco-prima:ind_picco+dopo])
                     carica[i, ev] = integral
+                    # print(integral)
 
                     # indici sopra e sotto il threshold
                     # sop[i, ev] = jj
@@ -136,6 +155,16 @@ class ANALYZE_DATA:
                     ev += 1
                     e[i] = int(ev)
                 else: j += 1
+                
+        # histogram of noise events
+        plt.figure(figsize=[10, 6])
+        ax=plt.gca()
+        ax.tick_params(bottom=True, top=True, left=True, right=True)
+        ax.tick_params(labelbottom=True, labeltop=False, labelleft=True, labelright=False)
+        plt.ylabel('Counts')
+        plt.xlabel('Charge [ADC.ns]')
+        plt.hist(rej, self.bin, range=[self.range_x1, self.range_x2], density=False)
+        plt.show()
 
         if self.debug_signal==True:
             plt.ylabel('Amplitude [ADC]')
@@ -276,7 +305,8 @@ class ANALYZE_DATA:
     
         #pop, pc = leastsq(tre_gauss, b1, n, p0, maxfev=10000)
         # popt=p0    #plot delle gaussiane singole e totale con i parametri iniziali che do io
-    
+        
+        
         chi2 = 0
         for i in range(0, len(b1)):
             if self.hd.n[i]!=0: chi2 += (yc[i]-self.hd.n[i])**2/(self.hd.n[i]) # FOR CHI2 DENSITY=FALSE IN THIS HIST & IN ISTO_CHARGE HIST
@@ -334,9 +364,11 @@ class ANALYZE_DATA:
             plt.ylabel('Counts')
             plt.xlabel('Charge [ADC.ns]')
             plt.legend(fontsize = 'xx-small', loc='upper right')                      #PLOT
+            plt.axvline(x=popt[4]-popt[5], color='red', linewidth=1)
+            plt.axvline(x=popt[4]+popt[5], color='red', linewidth=1)
             # plt.savefig('coldbox_aug_spe_spectrum-carica = 5177.131 ,  SNR =  4.57.png', dpi=600)
             plt.show()                                                             #PLOT 
-            print('charge =', round(popt[7]-popt[4], 2), ',  SNR = ', round(SNR, 2), ",  chi2 =", round(chi2, 2))#, j)
+            print('carica =', round(popt[7]-popt[4], 2), ',  SNR = ', round(SNR, 2), ",  chi2 =", round(chi2, 2))#, j)
 
     
         return popt, pcov, SNR, chi2
@@ -371,6 +403,31 @@ class ANALYZE_DATA:
 
 #################################################################################
 
+
+    def mean_wvf(self, spe, std, mult1, mult2):
+        
+        c=self.hd.charge
+        n_wvf=len(c)
+        a=self.hd.a_filt
+        mean=np.zeros(len(a[0]))
+        cont=0
+        
+        for i in range(0,n_wvf):
+            
+            val = c[i]
+            
+            if val<spe+mult1*std or val>spe-mult2*std:
+                cont+=1
+                mean+=a[i]
+        
+        mean=mean/cont
+        
+        return mean
+            
+    
+
+
+##################################################################################
 
     def optimization(self, integration_time, binning):
     

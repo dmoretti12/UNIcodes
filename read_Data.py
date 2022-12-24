@@ -30,11 +30,11 @@ class READ_DATA:
      
  #################################################       
         
-    def read_binary(self):
+    def read_binary(self, n):
         
         ns = self.hd.ns
         if self.bit==16:
-            filez = np.fromfile(self.file, dtype=np.int16)
+            filez = np.fromfile(self.file, dtype=np.int16) #dtype=np.float64 for float of 8 bytes (henrique's data)
             print('len file:', len(filez))
         filez32 = np.fromfile(self.file, dtype=np.int32, count=2)  # header=6 invece di 12
         # if self.bit==32:
@@ -56,7 +56,8 @@ class READ_DATA:
         # pointsxwvf32 = int(pointsxwvf/2) 
             wvf = int(len(filez)/pointsxwvf)
             points = pointsxwvf-self.header   # tolgo l'header x ogni wvf
-
+        if n!=0:
+                wvf=n
         a = np.zeros((wvf, points))
         adc = np.zeros((wvf, points))
         t = np.zeros((wvf, points))
@@ -70,17 +71,17 @@ class READ_DATA:
         a = adc * self.adc_res  #valori in volt o mV
         
         # freq 62.5 Mhz se a è 250 Mhz
-        out = int(len(a[0])/4)
+        # out = int(len(a[0])/4)
         
-        t62 = np.empty((len(a), out))
-        a62 = np.empty((len(a), out))
+        # t62 = np.empty((len(a), out))
+        # a62 = np.empty((len(a), out))
 
-        for i in range(0, out):
+        # for i in range(0, out):
 
-            t62[:, i] = t[:, 4*i]
-            a62[:, i] = a[:, 4*i]
+        #     t62[:, i] = t[:, 4*i]
+        #     a62[:, i] = a[:, 4*i]
 
-        return a, t, a62, t62#, adc , time
+        return a, t#, a62, t62#, adc , time
         
 #########################################################################
         
@@ -215,16 +216,16 @@ class READ_DATA:
 
 ############################################################################à
 
-    def __read__(self):
-        if self.type=='binary':
-            f = READ_DATA.read_binary(self)
-        if self.type=='many_txt':
-            f = READ_DATA.read_many_txt(self)
-        if self.type=='long_txt':
-            f = READ_DATA.read_long_txt(self)
-        if self.type=='long_txt_time':
-            f = READ_DATA.read_long_txt_time(self)
-        return f
+    # def __read__(self):
+    #     if self.type=='binary':
+    #         f = READ_DATA.read_binary(self)
+    #     if self.type=='many_txt':
+    #         f = READ_DATA.read_many_txt(self)
+    #     if self.type=='long_txt':
+    #         f = READ_DATA.read_long_txt(self)
+    #     if self.type=='long_txt_time':
+    #         f = READ_DATA.read_long_txt_time(self)
+    #     return f
 
      
     

@@ -33,19 +33,21 @@ def plot(t, a, qf, i):
 def zm():
     plt.close('all')
     
-def histo_2d(t, a, x1, x2, step1, y1, y2, step2):
+def histo_2d(t, a, x1, x2, step1, y1, y2, step2, draw, mean):
     
     xbi = np.arange(x1, x2, step1)
     ybi = np.arange(y1, y2, step2)
     
     plt.figure()
-    h, xb, yb = np.histogram2d(t.flatten(), a.flatten(), bins=(xbi, ybi), normed=None, weights=None, density=None)
-    h = np.log(h.T)
+    h, yb, xb = np.histogram2d(a.flatten(), t.flatten(), bins=(ybi, xbi), range=((y1,y2),(x1,x2)), normed=None, weights=None, density=None)
+    # h = np.log(h.T)
     #X, Y = np.meshgrid(xb, yb)
-    plt.pcolormesh(xb, yb, h, cmap='jet')
+    plt.pcolormesh(xb, yb, np.log(h), cmap='jet')
     plt.xlabel('Time [ns]')
     plt.ylabel('Amplitude [ADC]')
     plt.colorbar()
+    if draw==True:
+        plt.plot(t[0], mean, c='black')
     plt.show()
 
     

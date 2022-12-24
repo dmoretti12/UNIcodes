@@ -197,18 +197,21 @@ class FILTER_DATA:
         cont = np.zeros(n_wvf)
         uno = np.ones(n_wvf)
         # valori = a[0:nwvf, 0:wvf_lenght]
+        h_wvf_lenght = int(wvf_lenght/2)
         
         
         if self.debug_base==True: 
             plt.figure()                           #PLOT
             n_wvf=4
             
+        ind_jump = int(self.exclusion_window/self.hd.ns)
+            
         for i in range (0, n_wvf):
             if i==0: print("Estimating baseline ..")
             if i==int(n_wvf/2): print("Estimated baseline of half of the wvfs ..")
-            j=0
-            val_acc = np.zeros(wvf_lenght)
-            val = a[i] #valori[i]
+            
+            val_acc = np.zeros(h_wvf_lenght)
+            val = a[i,0:h_wvf_lenght] #valori[i]
             # self.x1 = min(val)
             # self.x2 = np.mean(val)+(np.mean(val)-min(val))
             
@@ -221,22 +224,34 @@ class FILTER_DATA:
             
             tre = maxx + self.threshold_base
             tre_ = maxx - self.threshold_base
-
-            while j<wvf_lenght:
-                if (val[j]<tre and val[j]>tre_):
-                    val_acc[j] = val[j]
-                    cont[i] += 1
-                    j = j + 1
+            
+            # j=0
+            # while j<wvf_lenght:                   # takes a lot of time
+            #     if (val[j]<tre and val[j]>tre_):
+            #         val_acc[j] = val[j]
+            #         cont[i] += 1
+            #         j = j + 1
                     
-                else: j=j+int(self.exclusion_window/self.hd.ns)
+            #     else: j=j+ind_jump
+            
+            aux_j=0                                 
+            for j, v in enumerate(val):             #10s faster than above
+                if aux_j<=j:
+                    # print(v, j)
+                    if(v<tre and v>tre_):
+                        val_acc[j] = v
+                        cont[i] += 1
+                        aux_j+=1
+                    else:
+                        aux_j=j+ind_jump
+                else: continue
 
             if cont[i]==0: 
                 print(i)
                 cont[i]=1
             mu[i] = sum(val_acc)/cont[i]                        #faccio la semplice media perchè è una gaussiana, non serve fare il fit
-            if cont[i]<self.discard_tre: 
-                uno[i]=0
-                print(i, cont[i])
+            if cont[i]<self.discard_tre: uno[i]=0
+        # plt.hist(cont, 100, range=[-5, 2500])
 
         a0 = self.sottraggo_baseline(a0, a, mu)#valori invece di a #salvare in un formato i dati filtrati con baseline
         
