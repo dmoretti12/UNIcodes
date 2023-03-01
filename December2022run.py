@@ -24,11 +24,11 @@ j=0
 hd[j].ns = 4
 h1 = READ_DATA(hd[j])
 
-os.chdir(r"C:\Users\davide\Downloads\Random_trigger\run20_v5_turned_off_random_trigger")
-h1.file="0_wave5_v5_turned_off_random_trigger.dat"
+os.chdir(r"C:\Users\Davide\Downloads")
+h1.file="0_wave5_all_devices_random_trigger.dat"
 
 hd[j].a_wout_baseline,  hd[j].t = h1.read_binary(0)
-os.chdir(r"E:")
+os.chdir(r"C:\Users\Davide\Documents\GitHub\UNIcodes")
 
 #%%
 
@@ -87,10 +87,10 @@ histo_2d(hd[j].t, hd[j].a_filt, x1=0, x2=hd[j].t[0,-1], step1=hd[j].ns, y1=-60, 
 j=0
 
 h3 = ANALYZE_DATA(hd[j])
-h3.signal_threshold = 3.5
-h3.prima_t = 30
-h3.dopo_t = 170                
-h3.debug_signal = False
+h3.signal_threshold = 16
+h3.prima_t = 70
+h3.dopo_t = 250                
+h3.debug_signal = True
 h3.lim_amp = 300  # >10 pe is cosmic
 h3.windows = 6
 h3.time_after_pulse = 1000 
@@ -98,9 +98,9 @@ h3.number_events_expected = 800
 h3.sig_plot=True
 h3.t_min_sig = 0
 h3.t_max_sig = 0
-h3.bin = 400
-h3.range_x1 = -1000
-h3.range_x2 = 6000
+h3.bin = 200
+h3.range_x1 = -2000
+h3.range_x2 = 16000
 
 h3.time_noise = 250
 h3.value_noise = -60
