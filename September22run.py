@@ -5,7 +5,7 @@ Created on Thu Sep 22 12:01:34 2022
 @author: Davide
 """
 
-from tutte_le_mie_cazzate import*
+from allmyimports import*
 
 hd = [DATI(), DATI(), DATI(), DATI()]  #id() per indirizzo memoria, controllare che sia lo stesso altrimenti copia
 #%% DATI RANDOM TRIGGER 14/09
